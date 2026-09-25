@@ -22,6 +22,30 @@ const CHEV = () => svg('viewBox="0 0 8 14" fill="none" stroke="currentColor" str
 const BACK = () => svg('viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/>');
 const PLUS = () => svg('viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v16M4 12h16"/>');
 
+
+/* ---------- profile avatars: outline line-art, 12 variants (keep in sync with ICON_COUNT in lib/api.js) ---------- */
+const HEAD = '<circle cx="16" cy="14" r="5.5"/><path d="M6.5 28c.8-5.2 4.6-7.8 9.5-7.8s8.7 2.6 9.5 7.8"/>';
+const ICONS = [
+  '<path d="M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4 1.2 1.6 2.8 2.9 5.4 3.4"/>', // short hair
+  '<path d="M10.5 14c-1 4-.8 7 .4 9.2M21.5 14c1 4 .8 7-.4 9.2M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4 1.2 1.6 2.8 2.9 5.4 3.4"/>', // long hair
+  '<circle cx="13.6" cy="14.2" r="1.8"/><circle cx="18.4" cy="14.2" r="1.8"/><path d="M15.4 14.2h1.2"/>', // glasses
+  '<circle cx="16" cy="5.6" r="2.2"/><path d="M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4 1.2 1.6 2.8 2.9 5.4 3.4"/>', // bun
+  '<path d="M10.8 15.5c.5 3.6 2.5 5.7 5.2 5.7s4.7-2.1 5.2-5.7"/>', // beard
+  '<path d="M10.5 12.4c.3-3.7 2.7-5.6 5.5-5.6s5.2 1.9 5.5 5.6zM21.5 12.4h4"/>', // cap
+  '<path d="M10.5 13.5c0-4 2.4-6.6 5.5-6.6s5.5 2.6 5.5 6.6M10 19.5c-.5-2-.5-4 .5-6M22 19.5c.5-2 .5-4-.5-6"/>', // bob
+  '<circle cx="8.6" cy="12.6" r="2"/><circle cx="23.4" cy="12.6" r="2"/><path d="M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4 1.2 1.6 2.8 2.9 5.4 3.4"/>', // pigtails
+  '<path d="M10.5 11.4c3.3 1.4 7.7 1.4 11 0M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4"/>', // headband
+  '<path d="M12.6 17.2c1.2-.9 2.2-.9 3.4 0 1.2-.9 2.2-.9 3.4 0"/><path d="M10.6 12.6c1.6-.2 3.6-1.2 5.4-3.4 1.2 1.6 2.8 2.9 5.4 3.4"/>', // moustache
+  '<path d="M10.6 14h10.8M11.2 14v1.8c0 .9.7 1.4 1.5 1.4h.6c.8 0 1.5-.6 1.5-1.4V14M16.9 14v1.8c0 .9.7 1.4 1.5 1.4h.6c.8 0 1.5-.6 1.5-1.4V14"/>', // shades
+  '<path d="M10.7 12.4c-1.2-1.6-.5-3.6 1.2-4 .3-1.7 2.2-2.6 4.1-1.7 1.9-.9 3.8 0 4.1 1.7 1.7.4 2.4 2.4 1.2 4"/>', // curls
+];
+const avatar = (icon, size = 38) => {
+  const el = svg(`viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${HEAD}${ICONS[icon] ?? ""}`);
+  const wrap = h("div", { class: "avatar", style: `width:${size}px;height:${size}px` }, el);
+  return wrap;
+};
+const randomIcon = (not) => { let i; do i = Math.floor(Math.random() * ICONS.length); while (i === not); return i; };
+
 async function api(path, opts = {}) {
   const res = await fetch("/api" + path, {
     ...opts,
@@ -84,14 +108,19 @@ function openSheet({ title, body, saveLabel = "Save", onSave, onDelete, deleteLa
 }
 
 const nameSheet = ({ profile, onDone }) => {
+  let icon = profile?.icon ?? randomIcon();
   const input = h("input", { class: "field", placeholder: "Name", value: profile?.name ?? "", maxlength: 40, autocomplete: "off", autocapitalize: "words" });
+  const preview = h("div", { class: "picker" });
+  const paint = () => preview.replaceChildren(avatar(icon, 84));
+  paint();
+  const shuffle = h("button", { type: "button", class: "link", onclick: () => { icon = randomIcon(icon); paint(); } }, "Shuffle icon");
   const dlg = openSheet({
     title: profile ? "Edit Profile" : "New Profile",
-    body: input,
+    body: h("div", {}, h("div", { class: "picker-wrap" }, preview, shuffle), input),
     onSave: async () => {
       const name = input.value.trim();
-      if (profile) await api(`/profiles/${profile.id}`, { method: "PATCH", body: { name } });
-      else await api("/profiles", { method: "POST", body: { name } });
+      if (profile) await api(`/profiles/${profile.id}`, { method: "PATCH", body: { name, icon } });
+      else await api("/profiles", { method: "POST", body: { name, icon } });
       onDone(name);
     },
     deleteLabel: "Delete Profile",
@@ -132,7 +161,7 @@ function readingSheet({ profile, reading, onDone }) {
 async function homeView() {
   const profiles = await api("/profiles");
   const rows = profiles.map((p) => h("button", { class: "row", onclick: () => (location.hash = `#/p/${p.id}`) },
-    h("div", { class: "avatar" }, p.name.trim()[0]?.toUpperCase() ?? "?"),
+    avatar(p.icon),
     h("div", { class: "grow" },
       h("div", { class: "title" }, p.name),
       h("div", { class: "sub" }, p.ts ? `${p.sys}/${p.dia} · ${relative(p.ts)}` : "No readings yet")),
@@ -175,7 +204,7 @@ async function profileView(id) {
     h("div", { class: "nav" },
       h("button", { class: "back", onclick: () => (location.hash = "#/") }, BACK(), "Profiles"),
       h("button", { onclick: () => nameSheet({ profile, onDone: refresh }) }, "Edit")),
-    h("h1", {}, profile.name),
+    h("h1", { class: "with-avatar" }, avatar(profile.icon, 44), profile.name),
     h("button", { class: "btn", onclick: () => readingSheet({ profile, onDone: refresh }) }, "Add Reading"),
   ];
 

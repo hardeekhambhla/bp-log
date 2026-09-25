@@ -5,6 +5,7 @@
 - Static SPA in `public/` (vanilla JS, hash routes `#/` and `#/p/<id>`), Pages Functions in
   `functions/api/*` backed by **D1** (binding `DB`). `lib/api.js` creates tables on first request
   (no migration step) and holds validation. Profiles are seeded once via a `meta` row.
+- Profile avatars: `icon` int (0-11) per profile, random + unique-preferring on create/seed; rendered from `ICONS` in `public/app.js` (keep length = `ICON_COUNT` in `lib/api.js`). Column is auto-added to older DBs in `lib/api.js`.
 - API: `GET/POST /api/profiles`, `PATCH/DELETE /api/profiles/:id`, `GET /api/readings?profile=`,
   `POST /api/readings`, `PATCH/DELETE /api/readings/:id`.
 - Local dev: `make dev` (wrangler pages dev, local D1 in `.wrangler/`).
